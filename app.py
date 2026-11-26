@@ -41,9 +41,15 @@ st.set_page_config(
 )
 
 
+# Logo de respaldo incluido directamente en la aplicación, para evitar errores
+# cuando GitHub no conserva la carpeta assets/ al cargar archivos manualmente.
+EMBEDDED_LOGO_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="title desc">\n<title id="title">SATDA — identidad definitiva</title>\n<desc id="desc">Birrete azul institucional, cuatro nodos violetas de análisis predictivo y arco celeste centrado. Fondo transparente, sin brillos, sombras ni elementos blancos.</desc>\n<!-- Birrete académico: formas planas, sin franjas blancas -->\n<path fill="#102E57" d="M 90 167 Q 88 164 97 159 L 249 88 Q 256 84 263 88 L 415 159 Q 424 164 422 168 L 345 207 Q 256 172 167 207 Z"/>\n<path fill="#102E57" d="M 169 217 Q 256 182 343 217 L 343 260 Q 256 218 169 260 Z"/>\n<!-- Gráfico de cuatro nodos: los extremos están centrados respecto del arco -->\n<path d="M 165.23 341.32 L 198.77 322.68 M 239.12 318.16 L 268.88 326.84 M 309.04 321.98 L 346.96 300.02" stroke="#7454D6" stroke-width="14" fill="none" stroke-linecap="round"/>\n<path d="M 124 352 a 22 22 0 1 0 44 0 a 22 22 0 1 0 -44 0 Z M 137 352 a 9 9 0 1 1 18 0 a 9 9 0 1 1 -18 0 Z M 196 312 a 22 22 0 1 0 44 0 a 22 22 0 1 0 -44 0 Z M 209 312 a 9 9 0 1 1 18 0 a 9 9 0 1 1 -18 0 Z M 268 333 a 22 22 0 1 0 44 0 a 22 22 0 1 0 -44 0 Z M 281 333 a 9 9 0 1 1 18 0 a 9 9 0 1 1 -18 0 Z M 344 289 a 22 22 0 1 0 44 0 a 22 22 0 1 0 -44 0 Z M 357 289 a 9 9 0 1 1 18 0 a 9 9 0 1 1 -18 0 Z" fill="#7454D6" fill-rule="evenodd"/>\n<!-- Arco simétrico de apoyo, extremos x=108/404 (a igual distancia del centro) -->\n<path d="M 108 369 C 154 432 207 449 256 449 C 305 449 358 432 404 369 C 379 429 326 470 256 470 C 186 470 133 429 108 369 Z" fill="#35B9D8"/>\n</svg>'
+
+
 @st.cache_data(show_spinner=False)
 def logo_base64() -> str:
-    return base64.b64encode(LOGO.read_bytes()).decode("ascii")
+    svg_data = LOGO.read_bytes() if LOGO.is_file() else EMBEDDED_LOGO_SVG.encode("utf-8")
+    return base64.b64encode(svg_data).decode("ascii")
 
 
 def logo_html(width: int = 100) -> str:
