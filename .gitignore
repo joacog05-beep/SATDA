@@ -1,0 +1,32 @@
+# Python / virtualenv / editors
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+.vscode/
+.idea/
+.pytest_cache/
+.mypy_cache/
+.DS_Store
+Thumbs.db
+
+# Streamlit secrets: nunca subir credenciales
+.streamlit/secrets.toml
+
+# No subir datos reales de estudiantes ni modelos entrenados
+*.xlsx
+*.xls
+*.parquet
+*.pkl
+*.pickle
+*.joblib
+*.dat
+*.db
+*.sqlite3
+*.csv
+!datos_ficticios_ejemplo.csv
+
+# Salidas locales
+*.log
