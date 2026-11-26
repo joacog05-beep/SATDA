@@ -160,9 +160,141 @@ hr {border-color:#E6EAF5;}
 [data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] .footer {color:#60728C;}
 [data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] .metric-card .mini {color:#5F7089;}
 [data-testid="stMainBlockContainer"] [data-testid="stTextInput"] input {color:#243750!important;}
+/* Contraste accesible para TODOS los textos dentro de botones azules.
+   Streamlit a veces dibuja la etiqueta dentro de <p> o <span> y hereda otro color. */
+[data-testid="stAppViewContainer"] .stButton button[kind="primary"],
+[data-testid="stAppViewContainer"] .stFormSubmitButton button[kind="primary"],
+[data-testid="stAppViewContainer"] button[data-testid="stBaseButton-primary"] {
+  background:linear-gradient(105deg,#102E57,#1F5293)!important;
+  border:1px solid #102E57!important;
+  color:#FFFFFF!important;
+}
+[data-testid="stAppViewContainer"] .stButton button[kind="primary"] *,
+[data-testid="stAppViewContainer"] .stFormSubmitButton button[kind="primary"] *,
+[data-testid="stAppViewContainer"] button[data-testid="stBaseButton-primary"] *,
+[data-testid="stAppViewContainer"] .stButton button[kind="primary"] p,
+[data-testid="stAppViewContainer"] .stFormSubmitButton button[kind="primary"] p {
+  color:#FFFFFF!important;fill:#FFFFFF!important;opacity:1!important;
+  -webkit-text-fill-color:#FFFFFF!important;
+}
+/* Estilos legados secundarios: reemplazados por el bloque v1.3 de contraste al final. */
+[data-testid="stAppViewContainer"] .stButton button[kind="secondary"],
+[data-testid="stAppViewContainer"] button[data-testid="stBaseButton-secondary"] {
+  background:#FFFFFF!important;border:1.5px solid #23558E!important;
+  color:#102E57!important;
+}
+[data-testid="stAppViewContainer"] .stButton button[kind="secondary"] *,
+[data-testid="stAppViewContainer"] button[data-testid="stBaseButton-secondary"] * {
+  color:#102E57!important;opacity:1!important;
+  -webkit-text-fill-color:#102E57!important;
+}
+[data-testid="stAppViewContainer"] .stButton button:focus-visible {
+  outline:3px solid #35B9D8!important;outline-offset:2px;
+}
+
 /* Panel del modelo: botones azules en lugar de pestañas con texto poco contrastado */
 .st-key-satda_model_tab_0 button, .st-key-satda_model_tab_1 button, .st-key-satda_model_tab_2 button {min-height:52px;border-radius:13px!important;}
 @media(max-width:750px){.hero {padding:18px;gap:15px}.hero img{width:80px;height:80px}.hero h2{font-size:1.3rem !important}.page-head h1{font-size:1.55rem !important}.metric-card{padding:13px}.metric-card .num{font-size:24px}}
+
+/* SATDA v1.3 — contraste consistente en controles interactivos.
+   Corrección de textos oscuros sobre botones azules/negros y sobre el buscador.
+   Este bloque está al final para prevalecer sobre los estilos anteriores. */
+[data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"] .stButton button,
+[data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"] .stFormSubmitButton button,
+[data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"] button[data-testid^="stBaseButton-"] {
+  background:#163A70 !important;
+  background-image:linear-gradient(105deg,#102E57,#245497) !important;
+  border:1px solid #153C75 !important;
+  color:#FFFFFF !important;
+  -webkit-text-fill-color:#FFFFFF !important;
+  opacity:1 !important;
+  font-weight:750 !important;
+}
+/* La etiqueta del botón está en un <p> interno en algunas versiones de Streamlit.
+   Forzar el color en el propio texto, no solo en el elemento button. */
+html body [data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"] .stButton button :is(p,span,div,strong,small),
+html body [data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"] .stFormSubmitButton button :is(p,span,div,strong,small),
+html body [data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"] button[data-testid^="stBaseButton-"] :is(p,span,div,strong,small),
+html body [data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"] .stButton button svg,
+html body [data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"] .stFormSubmitButton button svg {
+  color:#FFFFFF !important;
+  -webkit-text-fill-color:#FFFFFF !important;
+  fill:currentColor !important;
+  opacity:1 !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"] .stButton button:hover,
+[data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"] .stFormSubmitButton button:hover,
+[data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"] button[data-testid^="stBaseButton-"]:hover {
+  background:#2B63AE !important;
+  background-image:none !important;
+  color:#FFFFFF !important;
+  border-color:#3273C4 !important;
+}
+/* Botón sin habilitar: continúa siendo perceptiblemente inactivo pero legible. */
+[data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"] .stButton button:disabled,
+[data-testid="stAppViewContainer"] [data-testid="stMainBlockContainer"] .stFormSubmitButton button:disabled {
+  background:#506787 !important;
+  background-image:none !important;
+  border-color:#506787 !important;
+  color:#FFFFFF !important;
+  -webkit-text-fill-color:#FFFFFF !important;
+  opacity:.82 !important;
+  cursor:not-allowed !important;
+}
+/* Navegación de Modelo y métricas: tres botones de la marca, texto blanco.
+   La opción activa mantiene un azul más claro para distinguirla. */
+[data-testid="stAppViewContainer"] [class*="st-key-satda_model_tab_"] button {
+  background:#163763 !important;
+  background-image:none !important;
+  border:1px solid #274C82 !important;
+  color:#FFFFFF !important;
+  -webkit-text-fill-color:#FFFFFF !important;
+  min-height:52px !important;
+}
+[data-testid="stAppViewContainer"] [class*="st-key-satda_model_tab_"] button[kind="primary"],
+[data-testid="stAppViewContainer"] [class*="st-key-satda_model_tab_"] button[data-testid="stBaseButton-primary"] {
+  background:#2355A0 !important;
+  background-image:none !important;
+  border:1px solid #2355A0 !important;
+}
+[data-testid="stAppViewContainer"] [class*="st-key-satda_model_tab_"] button :is(p,span,div,strong) {
+  color:#FFFFFF !important;
+  -webkit-text-fill-color:#FFFFFF !important;
+  opacity:1 !important;
+}
+/* Buscador de StudentID: mantener fondo oscuro pero texto y marcador claros. */
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] div[data-baseweb="input"],
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] div[data-baseweb="base-input"] {
+  background:#252932 !important;
+  border-color:#52658A !important;
+  color:#FFFFFF !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] input,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] div[data-baseweb="input"] input {
+  background:#252932 !important;
+  color:#FFFFFF !important;
+  -webkit-text-fill-color:#FFFFFF !important;
+  caret-color:#FFFFFF !important;
+  opacity:1 !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] input::placeholder {
+  color:#C9D6E9 !important;
+  -webkit-text-fill-color:#C9D6E9 !important;
+  opacity:1 !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] [data-testid="InputInstructions"],
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] [data-testid="InputInstructions"] *,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] [data-testid="stInputInstructions"],
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] [data-testid="stInputInstructions"] * {
+  color:#EFF4FF !important;
+  -webkit-text-fill-color:#EFF4FF !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] div[data-baseweb="base-input"]:focus-within {
+  border-color:#35B9D8 !important;
+  box-shadow:0 0 0 1px #35B9D8 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -217,36 +349,51 @@ def render_chart(fig: go.Figure, key: str) -> None:
 
 @st.cache_resource(show_spinner=False)
 def bundled_result() -> ModelResult:
-    if BUILTIN_DATASET.is_file():
-        data = read_uploaded_dataset(BUILTIN_DATASET.read_bytes(), BUILTIN_DATASET.name)
-        return fit_model(data, is_demo=False)
-    return fit_model(create_demo_dataset(), is_demo=True)
+    if not BUILTIN_DATASET.is_file():
+        raise FileNotFoundError(
+            "Falta data/students_performance_dataset.xlsx dentro del repositorio. "
+            "Subí la carpeta data junto a app.py y satda_core.py."
+        )
+    data = read_uploaded_dataset(BUILTIN_DATASET.read_bytes(), BUILTIN_DATASET.name)
+    return fit_model(data, is_demo=False)
 
 
 def get_current_result() -> tuple[ModelResult, str]:
+    """Nunca sustituir silenciosamente un Excel rechazado por 360 alumnos demo."""
     if ENABLE_DATA_UPLOAD and st.session_state.get("data_mode", "Base del trabajo práctico") == "Cargar archivo":
         uploaded = st.session_state.get("user_dataset")
-        if uploaded is not None:
-            raw = uploaded.getvalue()
-            sig = hashlib.sha256(raw).hexdigest()
-            if st.session_state.get("uploaded_sha") != sig:
-                try:
-                    df = read_uploaded_dataset(raw, uploaded.name)
-                    sample_only = ("ficticio" in uploaded.name.lower() or "demo" in uploaded.name.lower())
-                    with st.spinner("Validando columnas y entrenando los cinco modelos..."):
-                        result = fit_model(df, is_demo=sample_only)
-                    st.session_state["uploaded_result"] = result
-                    st.session_state["uploaded_sha"] = sig
-                    st.session_state["upload_error"] = None
-                    st.session_state["selected_student"] = None
-                except Exception as exc:
-                    st.session_state["upload_error"] = str(exc)
-                    st.session_state["uploaded_result"] = None
-                    st.session_state["uploaded_sha"] = sig
-            if st.session_state.get("uploaded_result") is not None:
-                saved = st.session_state["uploaded_result"]
-                return saved, "Archivo de ejemplo" if saved.is_demo else "Archivo importado"
-    return bundled_result(), "Base del trabajo práctico"
+        if uploaded is None:
+            st.info("Seleccioná un archivo .xlsx o .csv en «Fuente de información» para abrir su panel.")
+            st.stop()
+        raw = uploaded.getvalue()
+        # Versión de parser en la clave: revalida archivos que fallaron en versiones anteriores.
+        sig = hashlib.sha256(raw).hexdigest() + ":parser-v1.2"
+        if st.session_state.get("uploaded_sha") != sig:
+            try:
+                df = read_uploaded_dataset(raw, uploaded.name)
+                sample_only = ("ficticio" in uploaded.name.lower() or "demo" in uploaded.name.lower())
+                with st.spinner("Validando columnas y entrenando los cinco modelos..."):
+                    result = fit_model(df, is_demo=sample_only)
+                st.session_state["uploaded_result"] = result
+                st.session_state["uploaded_sha"] = sig
+                st.session_state["upload_error"] = None
+                st.session_state["selected_student"] = None
+            except Exception as exc:
+                st.session_state["upload_error"] = str(exc)
+                st.session_state["uploaded_result"] = None
+                st.session_state["uploaded_sha"] = sig
+        if st.session_state.get("uploaded_result") is None:
+            st.error("El archivo no se pudo cargar: " + str(st.session_state.get("upload_error") or "Error desconocido."))
+            st.info("El tablero no muestra datos de otra fuente. Verificá el formato del Excel y volvé a cargarlo.")
+            st.stop()
+        saved = st.session_state["uploaded_result"]
+        return saved, "Archivo de ejemplo" if saved.is_demo else "Archivo importado"
+    try:
+        return bundled_result(), "Base del trabajo práctico"
+    except Exception as exc:
+        st.error("No se pudo abrir la base incluida con SATDA: " + str(exc))
+        st.info("Comprobá que `data/students_performance_dataset.xlsx` esté en GitHub y que `requirements.txt` incluya openpyxl.")
+        st.stop()
 
 
 def login_page() -> None:
@@ -308,10 +455,8 @@ def sidebar_controls() -> None:
 
 
 def source_notice(result: ModelResult, label: str) -> None:
-    if st.session_state.get("upload_error") and st.session_state.get("data_mode") == "Cargar archivo":
-        st.error("No se pudo leer el archivo: " + st.session_state["upload_error"])
-    elif st.session_state.get("data_mode") == "Cargar archivo" and st.session_state.get("user_dataset") is None:
-        st.caption("Seleccioná un archivo en «Fuente de información» para visualizar sus registros.")
+    # La carga se valida antes de renderizar: sin sustituciones ni datos heredados.
+    return
 
 
 def donut(records: pd.DataFrame) -> go.Figure:
