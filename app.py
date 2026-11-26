@@ -27,9 +27,10 @@ from satda_core import (
 
 ROOT = Path(__file__).resolve().parent
 LOGO = ROOT / "assets" / "satda_logo.svg"
-# Solo se permite importar registros cuando el responsable habilita explícitamente
-# este modo en un entorno local controlado. Nunca habilitar en la demo pública.
-ENABLE_DATA_UPLOAD = os.getenv("SATDA_ENABLE_DATA_UPLOAD", "0").strip().lower() in {"1", "true", "yes"}
+BUILTIN_DATASET = ROOT / "data" / "students_performance_dataset.xlsx"
+# Permite importar el dataset académico. Los archivos no se escriben en disco;
+# en una instalación pública utilizar solamente datos autorizados y sin nombres reales.
+ENABLE_DATA_UPLOAD = os.getenv("SATDA_ENABLE_DATA_UPLOAD", "1").strip().lower() in {"1", "true", "yes"}
 
 
 st.set_page_config(
@@ -37,7 +38,7 @@ st.set_page_config(
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded",
-    menu_items={"About": "SATDA · Prototipo académico demostrativo · Grupo 12 · FIUBA"},
+    menu_items={"About": "SATDA · Sistema de Alerta Temprana de Deserción Académica"},
 )
 
 
@@ -78,7 +79,7 @@ html, body, [class*="css"], .stApp { font-family: 'DM Sans',system-ui,Arial,sans
 [data-testid="stMetric"] {padding: .25rem 0;}
 [data-testid="stMetricValue"] {color:#102E57;font-weight:800;}
 .stButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"] {
-  background:linear-gradient(100deg,#7454D6,#4F63D8) !important;
+  background:linear-gradient(100deg,#102E57,#23559C) !important;
   color:white !important;border:0;border-radius:12px;font-weight:800;box-shadow:0 8px 20px rgba(116,84,214,.19);
 }
 .stButton>button, .stFormSubmitButton>button {border-radius:12px;font-weight:700;min-height:42px;}
@@ -133,6 +134,34 @@ hr {border-color:#E6EAF5;}
  border:1px solid #E6ECF8;border-radius:28px;box-shadow:0 12px 32px rgba(16,46,87,.08);}
 .login-card {text-align:center;background:white;padding:13px 24px;border:1px solid #E5EBF6;border-radius:16px;margin-bottom:12px;}
 .footer {font-size:11px;color:#7A8AA4;text-align:center;padding:26px 0 6px;}
+/* Legibilidad: Streamlit puede usar estilos oscuros heredados de navegador. */
+[data-testid="stMainBlockContainer"] [data-testid="stWidgetLabel"] p,
+[data-testid="stMainBlockContainer"] [data-testid="stMetricLabel"] p,
+[data-testid="stMainBlockContainer"] [data-testid="stCaptionContainer"] p,
+[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] > p,
+[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] > ul,
+[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] > ol,
+[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] li,
+[data-testid="stMainBlockContainer"] .stMarkdown p {color:#465771 !important;opacity:1!important;}
+[data-testid="stMainBlockContainer"] [data-testid="stMetricLabel"] p,
+[data-testid="stMainBlockContainer"] [data-testid="stWidgetLabel"] p {color:#53627A!important;font-weight:650!important;}
+[data-testid="stMainBlockContainer"] [data-testid="stCaptionContainer"] p {color:#53627A!important;}
+[data-testid="stMainBlockContainer"] .hero p {color:#E2EDFF!important;}
+[data-testid="stMainBlockContainer"] .hero .supra {color:#A8EEFA!important;}
+[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] strong {color:#1C3761;}
+[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] .hero strong {color:#FFF;}
+[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] .info-strip {color:#2F536F;}
+[data-testid="stMainBlockContainer"] [data-testid="stSelectbox"] label p,
+[data-testid="stMainBlockContainer"] [data-testid="stSlider"] label p,
+[data-testid="stMainBlockContainer"] [data-testid="stToggle"] label p,
+[data-testid="stMainBlockContainer"] [data-testid="stTextInput"] label p {color:#4A5E79!important;}
+[data-testid="stMainBlockContainer"] [data-testid="stMetricValue"] {color:#102E57!important;}
+[data-testid="stMainBlockContainer"] [data-testid="stMetricDelta"] {font-weight:700;}
+[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] .footer {color:#60728C;}
+[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] .metric-card .mini {color:#5F7089;}
+[data-testid="stMainBlockContainer"] [data-testid="stTextInput"] input {color:#243750!important;}
+/* Panel del modelo: botones azules en lugar de pestañas con texto poco contrastado */
+.st-key-satda_model_tab_0 button, .st-key-satda_model_tab_1 button, .st-key-satda_model_tab_2 button {min-height:52px;border-radius:13px!important;}
 @media(max-width:750px){.hero {padding:18px;gap:15px}.hero img{width:80px;height:80px}.hero h2{font-size:1.3rem !important}.page-head h1{font-size:1.55rem !important}.metric-card{padding:13px}.metric-card .num{font-size:24px}}
 </style>
 """, unsafe_allow_html=True)
@@ -179,16 +208,23 @@ def fig_style(fig: go.Figure, height: int = 320, legend: bool = False) -> go.Fig
 
 
 def render_chart(fig: go.Figure, key: str) -> None:
-    st.plotly_chart(fig, use_container_width=True, theme=None, config={"displayModeBar": False, "responsive": True}, key=key)
+    fig.update_xaxes(fixedrange=True)
+    fig.update_yaxes(fixedrange=True)
+    st.plotly_chart(fig, use_container_width=True, theme=None,
+                    config={"displayModeBar": False, "responsive": True,
+                            "scrollZoom": False, "doubleClick": False}, key=key)
 
 
 @st.cache_resource(show_spinner=False)
-def demo_result() -> ModelResult:
+def bundled_result() -> ModelResult:
+    if BUILTIN_DATASET.is_file():
+        data = read_uploaded_dataset(BUILTIN_DATASET.read_bytes(), BUILTIN_DATASET.name)
+        return fit_model(data, is_demo=False)
     return fit_model(create_demo_dataset(), is_demo=True)
 
 
 def get_current_result() -> tuple[ModelResult, str]:
-    if ENABLE_DATA_UPLOAD and st.session_state.get("data_mode", "Ejemplo interactivo") == "Cargar dataset real":
+    if ENABLE_DATA_UPLOAD and st.session_state.get("data_mode", "Base del trabajo práctico") == "Cargar archivo":
         uploaded = st.session_state.get("user_dataset")
         if uploaded is not None:
             raw = uploaded.getvalue()
@@ -209,8 +245,8 @@ def get_current_result() -> tuple[ModelResult, str]:
                     st.session_state["uploaded_sha"] = sig
             if st.session_state.get("uploaded_result") is not None:
                 saved = st.session_state["uploaded_result"]
-                return saved, "ARCHIVO FICTICIO DE PRUEBA" if saved.is_demo else "DATOS IMPORTADOS · VALIDACIÓN LOCAL"
-    return demo_result(), "MODO DEMOSTRACIÓN · DATOS FICTICIOS"
+                return saved, "Archivo de ejemplo" if saved.is_demo else "Archivo importado"
+    return bundled_result(), "Base del trabajo práctico"
 
 
 def login_page() -> None:
@@ -235,9 +271,8 @@ def login_page() -> None:
                 st.rerun()
             else:
                 st.error("Usuario o contraseña incorrectos. Para esta demo ambos son «usuario».")
-        st.info("**Acceso de prueba:** usuario `usuario` · contraseña `usuario` · Solo estudiantes ficticios.", icon="🔐")
-        st.caption("Prototipo académico. Este acceso es intencionalmente simple y NO debe utilizarse para datos personales reales en producción.")
-        st.markdown('<div class="footer">SATDA · Grupo 12 · Introducción a la Ciencia de Datos · FIUBA</div>', unsafe_allow_html=True)
+        st.info("**Acceso de demostración:** usuario `usuario` · contraseña `usuario`.", icon="🔐")
+        st.markdown('<div class="footer">SATDA · Plataforma de análisis educativo</div>', unsafe_allow_html=True)
 
 
 def logout_callback() -> None:
@@ -251,19 +286,21 @@ def sidebar_controls() -> None:
         st.markdown(f'<div class="brand-head">{logo_html(58)}<div><div class="brand-name">SATDA</div>'
                     '<div class="brand-sub">Plataforma de alerta temprana<br>para instituciones educativas</div></div></div>', unsafe_allow_html=True)
         st.markdown('<div style="color:#A2B9DE;font-size:10px;font-weight:800;letter-spacing:.15em;margin-bottom:9px">ESPACIO INSTITUCIONAL</div>', unsafe_allow_html=True)
-        st.radio("Secciones", ["Resumen institucional", "Ficha de estudiante", "Modelo y métricas", "Acerca del prototipo"],
-                 label_visibility="collapsed", key="view", captions=["Indicadores y prioridades", "Búsqueda e intervención", "Resultados y comparación", "Alcance y metodología"])
+        st.radio("Secciones", ["Resumen institucional", "Ficha de estudiante", "Modelo y métricas", "Acerca del sistema"],
+                 label_visibility="collapsed", key="view", captions=["Indicadores y prioridades", "Búsqueda e intervención", "Resultados y comparación", "Aplicaciones institucionales"])
         st.divider()
         with st.expander("⚙️  Fuente de información", expanded=False):
             if ENABLE_DATA_UPLOAD:
-                st.radio("Origen de datos", ["Ejemplo interactivo", "Cargar dataset real"], key="data_mode")
-                if st.session_state["data_mode"] == "Cargar dataset real":
-                    st.file_uploader("Dataset compatible (.xlsx o .csv)", type=["xlsx", "csv"], key="user_dataset")
-                    st.caption("Campos obligatorios: Absences, Tutoring, ParentalSupport, GradeClass. StudentID y nombre son opcionales.")
-                    st.warning("Solo datasets autorizados y anonimizados en entornos locales. No usar datos reales en una app pública.", icon="🔒")
+                st.radio("Origen de datos", ["Base del trabajo práctico", "Cargar archivo"], key="data_mode")
+                if st.session_state["data_mode"] == "Cargar archivo":
+                    st.file_uploader("Dataset (.xlsx o .csv)", type=["xlsx", "csv"], key="user_dataset")
+                    st.caption("Columnas: Absences, Tutoring, ParentalSupport y GradeClass. StudentID y nombres son opcionales.")
+                    st.caption("Utilizá exclusivamente bases académicas autorizadas o anonimizadas.")
+                else:
+                    st.caption("students_performance_dataset.xlsx · 2.343 registros")
             else:
-                st.session_state["data_mode"] = "Ejemplo interactivo"
-                st.caption("🧪 Demostración pública: 360 estudiantes ficticios. La carga de archivos está deshabilitada para proteger datos personales.")
+                st.session_state["data_mode"] = "Base del trabajo práctico"
+                st.caption("Base del trabajo práctico")
         st.markdown('<div style="color:#B8C7E5;font-size:12px;line-height:1.6;margin-top:12px">'
                     '🧑‍🏫 Vista docente y directiva<br>🎯 Objetivo: riesgo de nota D/F<br>🛡️ Requiere supervisión humana</div>', unsafe_allow_html=True)
         st.markdown("<div style='height:22px'></div>", unsafe_allow_html=True)
@@ -271,19 +308,10 @@ def sidebar_controls() -> None:
 
 
 def source_notice(result: ModelResult, label: str) -> None:
-    if st.session_state.get("upload_error") and st.session_state.get("data_mode") == "Cargar dataset real":
-        st.error("No se pudo utilizar el dataset: " + st.session_state["upload_error"])
-        st.info("Se muestra la demostración con estudiantes ficticios hasta que cargues un dataset válido.")
-    elif (st.session_state.get("data_mode") == "Cargar dataset real" and result.is_demo
-          and st.session_state.get("user_dataset") is None):
-        st.info("No hay archivo importado todavía. Se mantiene la demostración con estudiantes ficticios.")
-    if result.is_demo:
-        st.markdown('<div class="info-strip">🧪 <strong>Datos simulados.</strong> Estudiantes, notas y probabilidades de esta vista son ficticios. '
-                    'Los resultados de investigación del grupo se muestran por separado en «Modelo y métricas».</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="info-strip">🔐 <strong>Datos cargados en esta sesión.</strong> El modelo se reentrenó con la base proporcionada; '
-                    'las métricas de validación usan 20 % reservado. Los riesgos del listado provienen de un modelo reajustado con todos los registros históricos. '
-                    'No usar calificaciones finales como información disponible anticipadamente.</div>', unsafe_allow_html=True)
+    if st.session_state.get("upload_error") and st.session_state.get("data_mode") == "Cargar archivo":
+        st.error("No se pudo leer el archivo: " + st.session_state["upload_error"])
+    elif st.session_state.get("data_mode") == "Cargar archivo" and st.session_state.get("user_dataset") is None:
+        st.caption("Seleccioná un archivo en «Fuente de información» para visualizar sus registros.")
 
 
 def donut(records: pd.DataFrame) -> go.Figure:
@@ -299,31 +327,46 @@ def donut(records: pd.DataFrame) -> go.Figure:
 
 
 def absences_chart(records: pd.DataFrame) -> go.Figure:
-    groups = pd.cut(records["Absences"], bins=[-1, 5, 10, 15, 20, 25, 30],
-                    labels=["0–5", "6–10", "11–15", "16–20", "21–25", "26–30"])
+    labels = ["0–5", "6–10", "11–15", "16–20", "21–25", "26–30", "Sin dato"]
+    groups = pd.cut(records["Absences"], bins=[-1, 5, 10, 15, 20, 25, 30], labels=labels[:6])
     data = records.assign(Group=groups.astype("object").fillna("Sin dato"))
-    ordered = ["0–5", "6–10", "11–15", "16–20", "21–25", "26–30", "Sin dato"]
     fig = go.Figure()
-    for label in ALERT_ORDER:
-        g = data[data["Alert"] == label].groupby("Group", observed=False).size().reindex(ordered, fill_value=0)
-        fig.add_trace(go.Bar(x=ordered, y=g.values, name=label, marker_color=ALERT_COLORS[label],
-                             hovertemplate="Inasistencias: %{x}<br>Estudiantes: %{y}<extra>"+label+"</extra>"))
-    fig.update_layout(barmode="stack", legend=dict(orientation="h", x=.5, xanchor="center", y=1.17),
-                      xaxis_title="Inasistencias (sobre 30)", yaxis_title="Cantidad de estudiantes", bargap=.28)
-    return fig_style(fig, 330, legend=True)
+    for priority in ["Sin alerta", "Alerta amarilla", "Alerta roja"]:
+        g = data.loc[data["Alert"] == priority].groupby("Group").size().reindex(labels, fill_value=0)
+        fig.add_trace(go.Bar(x=labels, y=g.values, name=priority,
+            marker_color=ALERT_COLORS[priority],
+            hovertemplate="Inasistencias: %{x}<br>%{y} estudiantes<extra>"+priority+"</extra>"))
+    fig_style(fig, 335, legend=True)
+    fig.update_layout(barmode="stack", bargap=.25,
+        margin=dict(l=48,r=10,t=68,b=48),
+        legend=dict(orientation="h", x=.5, xanchor="center", y=1.24,
+                    yanchor="top", font=dict(size=11), traceorder="normal"),
+        xaxis=dict(title=None, tickangle=0, tickfont=dict(size=10.5)),
+        yaxis=dict(title=None, rangemode="tozero", tickformat=",d"))
+    return fig
 
 
 def risk_distribution(records: pd.DataFrame) -> go.Figure:
+    """Barras discretas por deciles, sin zoom ni desplazamiento accidental."""
+    edges = list(range(0, 101, 10))
+    cats = [f"{a}–{b} %" for a, b in zip(edges[:-1],edges[1:])]
+    r = records.copy()
+    r["Decil"] = pd.cut(r["RiskProbability"]*100, bins=edges, labels=cats,
+                        include_lowest=True).astype(str)
     fig = go.Figure()
-    for label in ALERT_ORDER[::-1]:
-        r = records.loc[records["Alert"] == label, "RiskProbability"] * 100
-        fig.add_trace(go.Histogram(x=r, name=label, marker_color=ALERT_COLORS[label], opacity=.86,
-                                   xbins=dict(start=0, end=100, size=10), hovertemplate="%{x:.0f} % · %{y} estudiantes<extra>"+label+"</extra>"))
-    fig.update_layout(barmode="stack", xaxis_title="Riesgo estimado de D/F (%)", yaxis_title="Estudiantes",
-                      legend=dict(orientation="h", x=.5, xanchor="center", y=1.17), bargap=.16)
-    fig.add_vline(x=50, line_dash="dot", line_color="#C5A164")
-    fig.add_vline(x=80, line_dash="dot", line_color="#B84A65")
-    return fig_style(fig, 290, legend=True)
+    for priority in ["Sin alerta", "Alerta amarilla", "Alerta roja"]:
+        counts = r.loc[r["Alert"]==priority, "Decil"].value_counts().reindex(cats,fill_value=0)
+        fig.add_trace(go.Bar(x=cats, y=counts.values, name=priority,
+                 marker_color=ALERT_COLORS[priority],
+                 customdata=[priority]*len(cats),
+                 hovertemplate="Rango de riesgo: %{x}<br>Estudiantes: %{y}<extra>"+priority+"</extra>"))
+    fig_style(fig, 290, legend=True)
+    fig.update_layout(barmode="stack", bargap=.20,
+                      margin=dict(l=50, r=16, t=58, b=55),
+                      legend=dict(orientation="h", x=.5, xanchor="center", y=1.27, yanchor="top",font=dict(size=12)),
+                      xaxis=dict(title=None,tickfont=dict(size=11),tickangle=0),
+                      yaxis=dict(title=None,tickformat=",d",rangemode="tozero"))
+    return fig
 
 
 def risk_gauge(p: float) -> go.Figure:
@@ -380,7 +423,7 @@ def open_student_from_dashboard(student_id: str) -> None:
 def lookup_widget(records: pd.DataFrame, key: str, jump: bool) -> str | None:
     col_a, col_b = st.columns([2.2, 1.0], gap="small")
     with col_a:
-        search = st.text_input("Buscar por nombre, apellido o StudentID", placeholder="Ej.: García, SAT-2026-0021, 1042...", key=f"{key}_query")
+        search = st.text_input("Buscar por StudentID o nombre registrado", placeholder="Ej.: 1817, 2896 o apellido (si está registrado)", key=f"{key}_query")
     s = search.strip()
     if s:
         matches = records.loc[records["StudentID"].str.contains(re.escape(s), case=False, na=False) |
@@ -534,11 +577,20 @@ def student_profile(result: ModelResult, mode: str) -> None:
 
 
 def model_page(result: ModelResult, mode: str) -> None:
-    page_heading("VALIDACIÓN Y TRANSPARENCIA", "El modelo detrás de SATDA", "Métricas, errores y criterios de selección para respaldar decisiones académicas.")
+    page_heading("ANÁLISIS PREDICTIVO", "Modelo y métricas", "Resultados comparativos para evaluar el desempeño y respaldar decisiones académicas.")
     source_notice(result, mode)
-    t1, t2, t3 = st.tabs(["📘 Resultados del proyecto", "🧪 Dataset actual", "🧭 Metodología y alcance"])
-    with t1:
-        st.info("Resultados obtenidos por el Grupo 12 con su dataset de 2343 registros válidos, 80 % entrenamiento y 20 % prueba. **Estos valores no proceden de la simulación de la interfaz.**")
+    choices = ["📊 Resultados del proyecto", "📈 Dataset actual", "🎯 Metodología"]
+    if "satda_metrics_view" not in st.session_state:
+        st.session_state["satda_metrics_view"] = choices[0]
+    buttons = st.columns(3, gap="small")
+    for idx, (column, name) in enumerate(zip(buttons, choices)):
+        with column:
+            if st.button(name, key=f"satda_model_tab_{idx}", use_container_width=True,
+                         type="primary" if st.session_state["satda_metrics_view"] == name else "secondary"):
+                st.session_state["satda_metrics_view"] = name
+                st.rerun()
+    if st.session_state["satda_metrics_view"] == choices[0]:
+        st.caption("Resultados históricos del trabajo práctico: 2.343 registros · partición 80 % entrenamiento / 20 % prueba.")
         rl = PROJECT_METRICS.set_index("Modelo").loc["Regresión Logística"]
         cols = st.columns(4)
         for col, (lab, val, expl, color) in zip(cols,[
@@ -562,18 +614,18 @@ def model_page(result: ModelResult, mode: str) -> None:
         with st.expander("Tabla completa de métricas experimentales"):
             st.dataframe(PROJECT_METRICS.drop(columns=["FN", "FP"]).style.format({m:"{:.4f}" for m in ["AUC-ROC","Recall","Precisión","F1-Score","Accuracy"]}), hide_index=True, use_container_width=True)
         st.caption(f"Conjunto de evaluación: {PROJECT_EVALUATION_N} estudiantes · Matriz: VP=301, FN=18, FP=67, VN=83.")
-    with t2:
+    elif st.session_state["satda_metrics_view"] == choices[1]:
         if result.is_demo:
-            st.warning("Estos indicadores se calcularon sobre estudiantes artificiales. **No representan las métricas científicas del proyecto original.**")
+            st.caption("Los resultados de esta vista corresponden al conjunto de ejemplo.")
         else:
-            st.success("Métricas recalculadas sobre el 20 % reservado del archivo importado (random_state = 42).")
+            st.caption("Métricas recalculadas sobre el 20 % reservado del dataset seleccionado (random_state = 42).")
         st.caption(f"Muestra: {len(result.records)} registros · Entrenamiento: {result.train_n} · Prueba: {result.test_n}.")
         st.dataframe(result.metrics.style.format({m:"{:.4f}" for m in ["AUC-ROC","Recall","Precisión","F1-Score","Accuracy"]}), hide_index=True, use_container_width=True)
         render_chart(benchmark_fig(result.metrics), "actual_benchmark")
         with st.expander("Matriz de confusión y evaluación independiente"):
             render_chart(confusion_fig(result.confusion), "actual_cm")
         st.caption("El modelo mostrado en las fichas se reajusta sobre todos los registros después de evaluar con el conjunto de prueba, para ilustrar el uso operativo. Las puntuaciones de los estudiantes históricos no son una validación fuera de muestra.")
-    with t3:
+    else:
         st.markdown("""
 **Diseño experimental recuperado del notebook del grupo:**
 
@@ -588,26 +640,35 @@ def model_page(result: ModelResult, mode: str) -> None:
 
 
 def about_page(result: ModelResult, mode: str) -> None:
-    page_heading("ACERCA DE SATDA", "Anticipar para acompañar", "Prototipo del Sistema de Alerta Temprana de Deserción Académica · Grupo 12.")
-    st.markdown(f'<div class="hero">{logo_html(122)}<div><div class="supra">PROYECTO DE CIENCIA DE DATOS</div>'
-                '<h2>De la información<br>a la intervención.</h2>'
-                '<p>Apoyamos a docentes y directivos para identificar señales de bajo rendimiento y ofrecer acompañamiento oportuno.</p></div></div>', unsafe_allow_html=True)
-    c1,c2,c3=st.columns(3)
-    with c1: metric_tile("1. Identificación", "Datos", "Asistencia, tutorías y apoyo", CYAN)
-    with c2: metric_tile("2. Priorización", "Riesgo", "Señales por nivel de alerta", PURPLE)
-    with c3: metric_tile("3. Acompañamiento", "Acción", "Intervención con criterio humano", NAVY)
-    section("Qué puede hacer este prototipo")
+    page_heading("SISTEMA SATDA", "Anticipar para acompañar",
+                 "Sistema de Alerta Temprana de Deserción Académica · Inteligencia predictiva educativa.")
+    st.markdown(f'<div class="hero">{logo_html(122)}<div><div class="supra">SOLUCIÓN PARA INSTITUCIONES EDUCATIVAS</div>'
+                '<h2>Información que impulsa<br>decisiones oportunas.</h2>'
+                '<p>Una plataforma de análisis académico para universidades y escuelas que necesitan detectar señales de riesgo, coordinar recursos y acompañar trayectorias educativas.</p></div></div>', unsafe_allow_html=True)
+    a,b,c = st.columns(3, gap="medium")
+    with a: metric_tile("Visión integrada", "Monitoreo", "Indicadores de la población estudiantil", CYAN)
+    with b: metric_tile("Intervenciones", "Prioridad", "Alertas y seguimiento individual", PURPLE)
+    with c: metric_tile("Gestión institucional", "Eficiencia", "Asignación informada de recursos", NAVY)
+    section("Una plataforma para la gestión académica", "Aplicaciones concretas")
     st.markdown("""
-- Acceder con credenciales **solo para la exposición** (`usuario` / `usuario`).
-- Ver una cohorte simulada, buscar estudiantes por identificador o nombre y consultar su ficha.
-- Inspeccionar un puntaje orientativo de riesgo de calificación D/F y sugerencias de seguimiento no automáticas.
-- Explorar escenarios para comprender la respuesta estadística del modelo.
-- En un **entorno local controlado**, importar un `.xlsx` o `.csv` autorizado y reentrenar los modelos (`SATDA_ENABLE_DATA_UPLOAD=1`). La demostración pública tiene la carga deshabilitada.
-
-**No incluye:** integración con sistemas universitarios, autenticación segura, auditoría de accesos, gestión legal de datos personales, validación externa ni garantía de mejora de permanencia. Por eso no debe usarse operativamente con alumnos reales sin un piloto validado, revisión institucional y controles de protección de datos.
+- **Panel institucional:** indicadores y visualizaciones para reconocer tendencias académicas, asistencia y niveles de alerta.
+- **Fichas de estudiantes:** consulta por StudentID o por nombre, cuando la base lo incluya; acceso a métricas y antecedentes de seguimiento.
+- **Detección anticipada:** un modelo de Regresión Logística permite estimar el riesgo de calificación crítica (D/F) utilizando inasistencias, tutorías y apoyo familiar.
+- **Acompañamiento personalizado:** recomendaciones orientativas para planificar tutorías, mentorías, orientación y contacto con el estudiante.
+- **Análisis de escenarios:** simulación interactiva para explorar cómo responde la estimación ante distintos perfiles académicos.
+- **Administración de datos:** importación de archivos académicos compatibles y comparación de métricas para apoyar la evaluación del sistema.
     """)
-    st.info("**Siguiente etapa propuesta:** piloto institucional supervisado, evaluación de desempeño por cohortes y grupos, validación de umbrales, seguimiento de intervenciones y medición del impacto antes de un despliegue real.")
-    st.caption("Grupo 12 · FIUBA · Proyecto de Introducción a la Ciencia de Datos · SATDA")
+    section("Propuesta de valor para universidades y escuelas", "Modelo institucional B2B")
+    st.markdown("""
+SATDA permite pasar de un seguimiento principalmente reactivo a una **gestión académica preventiva y basada en datos**.
+Al priorizar los casos que requieren atención, las instituciones pueden organizar mejor sus recursos de tutoría,
+mejorar la coordinación entre áreas y fortalecer sus estrategias de acompañamiento y permanencia estudiantil.
+
+La plataforma también ofrece una base tecnológica escalable para incorporar nuevas fuentes de información,
+tablero de seguimiento de cohortes, trazabilidad de intervenciones y evaluación continua del desempeño predictivo.
+    """)
+    st.markdown('<div class="info-strip"><strong>Próxima etapa:</strong> implementación piloto con una institución educativa, '
+                'personalización de indicadores y validación del impacto de las acciones de acompañamiento.</div>', unsafe_allow_html=True)
 
 
 def main() -> None:
@@ -617,7 +678,7 @@ def main() -> None:
     if "view" not in st.session_state:
         st.session_state["view"] = "Resumen institucional"
     if "data_mode" not in st.session_state:
-        st.session_state["data_mode"] = "Ejemplo interactivo"
+        st.session_state["data_mode"] = "Base del trabajo práctico"
     sidebar_controls()
     result, source = get_current_result()
     try:
@@ -629,7 +690,7 @@ def main() -> None:
     except Exception as exc:
         st.error("No se pudo mostrar esta vista. Revisá los datos cargados o volvé al resumen.")
         st.exception(exc)
-    st.markdown('<div class="footer">SATDA · Prototipo académico para presentación · No es un sistema institucional en producción</div>', unsafe_allow_html=True)
+    st.markdown('<div class="footer">SATDA · Análisis académico y acompañamiento temprano</div>', unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

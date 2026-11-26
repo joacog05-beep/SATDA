@@ -27,6 +27,8 @@ Thumbs.db
 *.sqlite3
 *.csv
 !datos_ficticios_ejemplo.csv
+# Único Excel permitido en el repositorio: base sintética pública del TP
+!data/students_performance_dataset.xlsx
 
 # Salidas locales
 *.log

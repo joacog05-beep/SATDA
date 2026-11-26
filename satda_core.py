@@ -1,4 +1,4 @@
-"""Lógica de SATDA: modos DEMO y DATASET REAL.
+"""Lógica de SATDA: base académica del TP y carga de archivos.
 
 Reproduce las tres variables, el objetivo D/F, 80/20, random_state=42 y
 Regresión Logística del notebook suministrado. NO predice deserción.
@@ -23,7 +23,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precisio
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 FEATURES = ("Absences", "Tutoring", "ParentalSupport")
 TEST_SIZE = 0.20
@@ -95,6 +95,42 @@ def _find_col(columns, *aliases):
     return None
 
 
+def _parse_tutoring(value: Any) -> float:
+    """Normaliza yes/no del Excel del proyecto sin perder valores faltantes."""
+    if pd.isna(value) or str(value).strip() == "":
+        return np.nan
+    key = _key(value)
+    if key in {"yes", "si", "true", "1", "10"}:
+        return 1.0
+    if key in {"no", "false", "0", "00"}:
+        return 0.0
+    return np.nan
+
+
+def _parse_parental_support(value: Any) -> float:
+    """Codifica las categorías originales: Low=1, Moderate=2, High=3, Very High=4."""
+    if pd.isna(value) or str(value).strip() == "":
+        return np.nan
+    key = _key(value)
+    mapping = {"none":0, "sinapoyo":0, "verylow":0, "low":1,
+               "moderate":2, "medium":2, "high":3, "veryhigh":4}
+    if key in mapping:
+        return float(mapping[key])
+    if key in {"0", "1", "2", "3", "4"}:
+        return float(key)
+    return np.nan
+
+
+def _normalize_student_id(value: Any) -> str:
+    """Conserva el StudentID real, con cuatro cifras para IDs numéricos."""
+    if pd.isna(value) or str(value).strip() == "":
+        return ""
+    txt = str(value).strip()
+    if re.fullmatch(r"\d+(?:\.0+)?", txt):
+        return str(int(float(txt))).zfill(4)
+    return txt
+
+
 def read_uploaded_dataset(file_data: bytes, filename: str) -> pd.DataFrame:
     """Lectura sin escritura en disco. Rechaza columnas críticas ausentes e inconsistencias."""
     suffix = filename.lower().rsplit(".", 1)[-1]
@@ -132,8 +168,9 @@ def read_uploaded_dataset(file_data: bytes, filename: str) -> pd.DataFrame:
     df["Target"] = df["GradeParsed"].map(lambda x: x[1]).astype(int)
     df = df.drop(columns=["GradeParsed", "GradeClass"])
 
-    for name in FEATURES:
-        df[name] = pd.to_numeric(df[name], errors="coerce")
+    df["Absences"] = pd.to_numeric(df["Absences"], errors="coerce")
+    df["Tutoring"] = df["Tutoring"].map(_parse_tutoring)
+    df["ParentalSupport"] = df["ParentalSupport"].map(_parse_parental_support)
     df.loc[~df["Absences"].between(0, MAX_ABSENCES), "Absences"] = np.nan
     df.loc[~df["Tutoring"].isin([0, 1]), "Tutoring"] = np.nan
     df.loc[~df["ParentalSupport"].isin([0, 1, 2, 3, 4]), "ParentalSupport"] = np.nan
@@ -147,7 +184,7 @@ def read_uploaded_dataset(file_data: bytes, filename: str) -> pd.DataFrame:
     c_study = _find_col(raw.columns, "StudyTimeWeekly", "HorasEstudioSemanales")
 
     if c_id:
-        ids = raw.loc[df.index, c_id].fillna("").astype(str).str.strip()
+        ids = raw.loc[df.index, c_id].map(_normalize_student_id)
         missing_id = ids.eq("")
         # No se inventa que las referencias internas son IDs originales de la universidad.
         for idx in ids[missing_id].index:
@@ -193,7 +230,7 @@ def create_demo_dataset(n: int = 360) -> pd.DataFrame:
     risky = rng.binomial(1, event_probs)
     grades = [rng.choice(["D", "F"], p=[.65, .35]) if is_risky else rng.choice(["A", "B", "C"], p=[.18, .33, .49]) for is_risky in risky]
     return pd.DataFrame({
-        "StudentID": [f"SAT-{2026}-{i+1:04d}" for i in range(n)],
+        "StudentID": [f"{i+1001:04d}" for i in range(n)],
         "FullName": [f"{rng.choice(first)} {rng.choice(last)}" for _ in range(n)],
         "Absences": absences.astype(float),
         "Tutoring": tutoring.astype(float),
@@ -205,10 +242,19 @@ def create_demo_dataset(n: int = 360) -> pd.DataFrame:
 
 
 def _build_pipeline(estimator):
-    prep = ColumnTransformer([("numeric", Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
-        ("scale", StandardScaler()),
-    ]), list(FEATURES))])
+    # El notebook original trataba Tutoring/ParentalSupport como variables
+    # categóricas con imputación por moda y OneHotEncoder. La interfaz
+    # las representa 0-1/0-4, pero conservamos ese tratamiento al modelar.
+    prep = ColumnTransformer([
+        ("numeric", Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scale", StandardScaler()),
+        ]), ["Absences"]),
+        ("categorical", Pipeline([
+            ("imputer", SimpleImputer(strategy="most_frequent")),
+            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+        ]), ["Tutoring", "ParentalSupport"]),
+    ])
     return Pipeline([("prep", prep), ("model", estimator)])
 
 

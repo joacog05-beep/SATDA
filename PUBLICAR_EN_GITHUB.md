@@ -1,66 +1,37 @@
-# Publicar SATDA en GitHub + Streamlit Community Cloud
+# Actualizar la aplicación SATDA que ya está publicada
 
-## Opción A: desde VS Code (recomendada)
+No necesitás crear otro repositorio ni volver a conectar Streamlit.
 
-1. Extraé `SATDA_GitHub_StreamlitCloud_Listo.zip` en una carpeta vacía, por ejemplo `Documentos\satda-demo`. El archivo `app.py` debe quedar en la raíz de esa carpeta.
-2. Ingresá a https://github.com/new y creá un repositorio **público** llamado `satda-demo`. Dejalo **vacío**: no marques `Add a README file`, `.gitignore` ni licencia porque ya los incluimos.
-3. Abrí la carpeta en VS Code y luego **Terminal → Nueva terminal**.
-4. Corré estos comandos en PowerShell, uno por uno, reemplazando `TU_USUARIO` por tu nombre de GitHub:
+## Desde GitHub web
 
-```powershell
-git init
-git branch -M main
-git add .
-git commit -m "Publicar prototipo SATDA"
-git remote add origin https://github.com/TU_USUARIO/satda-demo.git
-git push -u origin main
-```
+1. Abrí tu repositorio actual.
+2. Subí **todo el contenido** de esta carpeta actualizada (no el ZIP) en la raíz, usando **Add file → Upload files**. Reemplazá los archivos existentes y confirmá el commit.
+3. Verificá que estén estos cuatro archivos en GitHub: `app.py`, `satda_core.py`, `requirements.txt`, `data/students_performance_dataset.xlsx`.
+4. Verificá que la carpeta `.streamlit` mantenga `config.toml`.
+5. Abrí la URL actual de Streamlit. Si no se actualiza, usá **Manage app → Reboot app**.
+6. Ingresá con `usuario / usuario` y comprobá que el panel muestre 2.343 registros y la búsqueda de `1817`.
 
-Si Git te pide configurar tu identidad, hacelo con `git config --global user.name "Tu nombre"` y `git config --global user.email "tu-correo-de-GitHub"`. Si no encuentra `git`, instalá Git for Windows desde https://git-scm.com/downloads/win y reiniciá VS Code.
+## Desde VS Code con Git
 
-5. Abrí https://share.streamlit.io e iniciá sesión con GitHub. Autorizá a Streamlit a acceder al repositorio.
-6. Elegí **Create app → Yup, I have an app**. Completá:
-   - **Repository:** `TU_USUARIO/satda-demo`
-   - **Branch:** `main`
-   - **Main file path:** `app.py`
-   - **App URL:** un subdominio libre (ej. `satda-demo-fiuba`).
-   - **Advanced settings → Python:** `3.11`
-7. Pulsá **Deploy**. El enlace queda en la forma `https://SUBDOMINIO.streamlit.app`.
-8. Abrí ese enlace desde un celular o ventana de incógnito para comprobar que se puede compartir.
-
-## Opción B: sin usar comandos de Git
-
-Creá `satda-demo` en GitHub e ingresá al repositorio. Elegí **Add file → Upload files**. Arrastrá los archivos y carpetas de la carpeta extraída (incluidas `assets`, `.streamlit`, `.github` y `tests`; las carpetas que empiezan con punto pueden estar ocultas por Windows). Confirmá con **Commit changes**. Asegurate de que `app.py`, `satda_core.py` y `requirements.txt` estén en la raíz. Después seguí el paso 5 anterior.
-
-## Si hay un error en Streamlit
-
-- **ModuleNotFoundError:** asegurate de que `requirements.txt` esté junto a `app.py` y de que el archivo `satda_core.py` se haya subido.
-- **No encuentra logo:** comprobá `assets/satda_logo.svg` (respetar mayúsculas/minúsculas en Linux).
-- **No aparece el repositorio:** verificá la conexión/autorización de Streamlit a GitHub y que tenés permiso de administración sobre el repositorio.
-- **Dependencias incompatibles:** desplegá con Python 3.11.
-- **La app se duerme después de un tiempo:** el hosting gratuito puede suspender aplicaciones inactivas; abrí la URL para reactivarla.
-
-## Credenciales de la demostración
-
-- Usuario: `usuario`
-- Contraseña: `usuario`
-
-Estas credenciales **no protegen datos reales**. Este repositorio está configurado para mostrar solo estudiantes ficticios e impide cargas de datasets en la app pública. No subas archivos con información académica identificable, ni las bases originales de estudiantes, ni contraseñas o tokens.
-
-## Actualizaciones posteriores
-
-Editá el proyecto en VS Code y ejecutá:
+Si ya tenés el repositorio clonado, copiá allí el contenido de este paquete y ejecutá:
 
 ```powershell
-git add .
-git commit -m "Actualizar SATDA"
-git push
+git add -A
+git status
+git commit -m "SATDA: mejora de UX y dataset academico"
+git push origin main
 ```
 
-Streamlit debería detectar los cambios y actualizar la app. Los tests se ejecutan mediante GitHub Actions.
+**Atención:** Git oculta por defecto todos los `.xlsx`; se agregó la excepción para `data/students_performance_dataset.xlsx`. En `git status` debe figurar ese archivo antes del commit. No incluyas otros archivos de alumnos.
 
-## Enlaces oficiales
+## Qué deberías ver
 
-- https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy
-- https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/app-dependencies
-- https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app
+- Sin avisos repetidos de «Datos ficticios».
+- Distribución de inasistencias legible con etiqueta «Sin dato».
+- Histograma por rangos de probabilidad y sin zoom accidental.
+- Texto y leyendas más oscuros.
+- Selector de métricas con botones azules.
+- «Acerca del sistema» con enfoque de propuesta de valor.
+- «Fuente de información» con la base del TP y opción de importar `.xlsx` o `.csv`.
+
+Si Streamlit muestra un error, consultá **Manage app → Logs** y revisá que se hayan subido todos los archivos del paquete, no solo `app.py`.
