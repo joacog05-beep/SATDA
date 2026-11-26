@@ -27,7 +27,54 @@ from satda_core import (
 
 ROOT = Path(__file__).resolve().parent
 LOGO = ROOT / "assets" / "satda_logo.svg"
-BUILTIN_DATASET = ROOT / "data" / "students_performance_dataset.xlsx"
+
+
+def find_builtin_dataset() -> Path:
+    """Ubica el Excel del TP tanto en la raíz de GitHub como en data/.
+
+    Acepta asimismo nombres como '(V03) students_performance_dataset (2).xlsx'.
+    No usa automáticamente el CSV de alumnos ficticios como sustituto del TP.
+    """
+    folders = (ROOT, ROOT / "data")
+    exact_names = ("students_performance_dataset.xlsx", "students_performance_dataset.csv")
+
+    # Preferimos el dataset colocado junto a app.py, como en el GitHub del usuario.
+    for folder in folders:
+        for name in exact_names:
+            candidate = folder / name
+            if candidate.is_file():
+                return candidate
+
+    # Los archivos descargados de Excel a veces tienen prefijos/sufijos de versión.
+    for folder in folders:
+        if not folder.is_dir():
+            continue
+        matches = sorted(
+            (p for p in folder.iterdir()
+             if p.is_file() and not p.name.startswith("~$")
+             and p.suffix.lower() in {".xlsx", ".csv"}
+             and "student" in p.stem.lower()),
+            key=lambda p: (p.suffix.lower() != ".xlsx", p.name.lower()),
+        )
+        if matches:
+            return matches[0]
+
+    # También aceptamos cualquier nombre si hay un único Excel en la raíz/data.
+    all_excels = [
+        p for folder in folders if folder.is_dir()
+        for p in folder.iterdir()
+        if p.is_file() and p.suffix.lower() == ".xlsx" and not p.name.startswith("~$")
+    ]
+    if len(all_excels) == 1:
+        return all_excels[0]
+
+    raise FileNotFoundError(
+        "No encontré el Excel del TP en GitHub. Subí el archivo .xlsx en la "
+        "misma carpeta que app.py (o dentro de data/). El nombre "
+        "students_performance_dataset.xlsx es válido, pero no obligatorio."
+    )
+
+
 # Permite importar el dataset académico. Los archivos no se escriben en disco;
 # en una instalación pública utilizar solamente datos autorizados y sin nombres reales.
 ENABLE_DATA_UPLOAD = os.getenv("SATDA_ENABLE_DATA_UPLOAD", "1").strip().lower() in {"1", "true", "yes"}
@@ -349,12 +396,8 @@ def render_chart(fig: go.Figure, key: str) -> None:
 
 @st.cache_resource(show_spinner=False)
 def bundled_result() -> ModelResult:
-    if not BUILTIN_DATASET.is_file():
-        raise FileNotFoundError(
-            "Falta data/students_performance_dataset.xlsx dentro del repositorio. "
-            "Subí la carpeta data junto a app.py y satda_core.py."
-        )
-    data = read_uploaded_dataset(BUILTIN_DATASET.read_bytes(), BUILTIN_DATASET.name)
+    dataset_path = find_builtin_dataset()
+    data = read_uploaded_dataset(dataset_path.read_bytes(), dataset_path.name)
     return fit_model(data, is_demo=False)
 
 
@@ -392,7 +435,7 @@ def get_current_result() -> tuple[ModelResult, str]:
         return bundled_result(), "Base del trabajo práctico"
     except Exception as exc:
         st.error("No se pudo abrir la base incluida con SATDA: " + str(exc))
-        st.info("Comprobá que `data/students_performance_dataset.xlsx` esté en GitHub y que `requirements.txt` incluya openpyxl.")
+        st.info("El archivo puede estar junto a `app.py` o en `data/`. Si está presente pero falla su lectura, comprobá que `requirements.txt` incluya `openpyxl`.")
         st.stop()
 
 
